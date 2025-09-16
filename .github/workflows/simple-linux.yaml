@@ -1,0 +1,16 @@
+name: Simple Linux Commands
+
+on: [push]
+
+jobs:
+  run-linux-commands:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Print working directory
+        run: pwd
+      - name: List repository files
+        run: ls -l
+      - name: Print hello world
+        run: echo "Hello, world!"
