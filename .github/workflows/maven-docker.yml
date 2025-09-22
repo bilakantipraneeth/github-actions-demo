@@ -48,7 +48,7 @@ jobs:
         file: ./github-actions-spring-boot/Dockerfile
         push: false
         load: true
-        tags: prkrb01/github-actions:${{ github.sha }}
+        tags: my-app:latest
 
     - name: Debug image tags
       run: |
@@ -58,7 +58,7 @@ jobs:
     - name: Run Trivy vulnerability scanner
       uses: aquasecurity/trivy-action@master
       with:
-        image-ref: ${{ steps.build-and-load.outputs.tags[0] }}
+        image-ref: my-app:latest
         format: 'sarif'
         output: 'trivy-results/trivy-results.sarif'
 
@@ -78,4 +78,4 @@ jobs:
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
     - name: Push Docker image to Registry
-      run: docker push ${{ steps.build-and-load.outputs.tags[0] }}
+      run: docker push my-app:latest
