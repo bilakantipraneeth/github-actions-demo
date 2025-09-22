@@ -34,4 +34,4 @@ jobs:
         context: ./github-actions-spring-boot
         file: ./github-actions-spring-boot/Dockerfile
         push: false
-        tags: your-dockerhub-username/your-repo-name:latest
+        tags: your-dockerhub-username/your-repo-name:${{ github.sha }}
