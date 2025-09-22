@@ -50,6 +50,11 @@ jobs:
         load: true
         tags: prkrb01/github-actions:${{ github.sha }}
 
+    - name: Debug image tags
+      run: |
+        echo "Full tags output: ${{ steps.build-and-load.outputs.tags }}"
+        echo "First tag output: ${{ steps.build-and-load.outputs.tags[0] }}"
+
     - name: Run Trivy vulnerability scanner
       uses: aquasecurity/trivy-action@master
       with:
