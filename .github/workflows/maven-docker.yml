@@ -50,6 +50,18 @@ jobs:
         load: true
         tags: prkrb01/github-actions:${{ github.sha }}
 
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ steps.build-and-load.outputs.tags }}
+        format: 'sarif'
+        output: 'trivy-results/trivy-results.sarif'
+
+    - name: Debug Trivy output path
+      run: |
+        ls -la
+        ls -la trivy-results/
+
     - name: Upload Trivy scan results to GitHub Security tab
       uses: github/codeql-action/upload-sarif@v3
       with:
