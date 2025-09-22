@@ -55,6 +55,9 @@ jobs:
         echo "Full tags output: ${{ steps.build-and-load.outputs.tags }}"
         echo "First tag output: ${{ steps.build-and-load.outputs.tags[0] }}"
 
+    - name: Create Trivy results directory
+      run: mkdir -p trivy-results
+
     - name: Run Trivy vulnerability scanner
       uses: aquasecurity/trivy-action@master
       with:
