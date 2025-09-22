@@ -1,4 +1,12 @@
-FROM openjdk:21-jdk-slim
-ARG JAR_FILE=github-actions-spring-boot/target/github-actions-spring-boot-0.0.1-SNAPSHOT.jar
-COPY ${JAR_FILE} app.jar
-ENTRYPOINT ["java","-jar","/app.jar"]
+FROM alpine:latest
+
+WORKDIR /app
+
+RUN apk update && \
+    apk add --no-cache bash coreutils
+
+COPY show_directory.sh .
+
+RUN chmod +x show_directory.sh
+
+CMD ["./show_directory.sh"]
