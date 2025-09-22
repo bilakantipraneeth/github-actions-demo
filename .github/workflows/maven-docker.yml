@@ -34,7 +34,7 @@ jobs:
         context: ./github-actions-spring-boot
         file: ./github-actions-spring-boot/Dockerfile
         push: false
-        tags: prkrb01/github-actions:{{ github.sha }}
+        tags: prkrb01/github-actions:${{ github.sha }}
 
     - name: Run Trivy vulnerability scanner
       uses: aquasecurity/trivy-action@master
