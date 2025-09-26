@@ -1,0 +1,2 @@
+# Using an old version of Flask known to have vulnerabilities
+Flask==1.1.2
