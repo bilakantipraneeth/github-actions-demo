@@ -26,6 +26,20 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Build Docker Image
+        working-directory: ./devsecops/capstone_app
+        run: |
+          docker build -t capstone-app:latest .
+
+      - name: Docker Image Scan with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'image'
+          image-ref: 'capstone-app:latest'
+          format: 'table'
+          exit-code: '1'
+          severity: 'CRITICAL,HIGH'
+
       - name: SCA Scan with Trivy
         uses: aquasecurity/trivy-action@master
         with:
