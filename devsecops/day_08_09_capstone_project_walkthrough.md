@@ -247,6 +247,7 @@ To integrate SonarCloud, we would add a new step to our `capstone_pipeline.yml` 
     *   `token: ${{ secrets.SONAR_TOKEN }}`: This is how the action authenticates to SonarCloud. It securely retrieves the `SONAR_TOKEN` from your GitHub repository secrets. This token grants the pipeline permission to upload analysis results to your SonarCloud project.
     *   `args`: These are additional arguments passed directly to the SonarCloud scanner.
         *   `-Dsonar.sources=devsecops/capstone_app/app.py`: Tells SonarCloud which files to analyze.
+        *   `-Dsonar.python.version=3.8`: Specifies the Python version for analysis.
         *   `-Dsonar.projectBaseDir=devsecops/capstone_app`: Tells SonarCloud the base directory of our project.
 
 **9.3 Theoretical Authentication (The `SONAR_TOKEN`):**
@@ -407,7 +408,7 @@ While pre-commit hooks are powerful, they can be bypassed (`git commit --no-veri
 *   **What it is:** Trivy is an open-source, comprehensive, and easy-to-use vulnerability scanner for container images, filesystems, and Git repositories. We already used it for SCA (filesystem scan). Now we'll use it for image scanning.
 *   **How it works (Theory):**
     1.  **Layer Analysis:** Trivy analyzes each layer of a Docker image.
-    2.  **Component Identification:** It identifies all operating system packages (e.g., `apt` packages for Debian/Ubuntu, `rpm` for CentOS) and application dependencies (e.g., Python `pip` packages, Node.js `npm` packages).
+    2.  **Component Identification:** It identifies all operating system packages (e.g., `apt` packages in Debian) and application dependencies (e.g., Python `pip` packages, Node.js `npm` packages).
     3.  **Vulnerability Database Lookup:** It compares these components against various vulnerability databases (e.g., NVD, vendor-specific advisories, language-specific advisories).
     4.  **Report Generation:** It generates a detailed report of all found vulnerabilities, including CVE IDs, severities (Critical, High, Medium, Low), and often provides recommended fixed versions.
 
@@ -496,5 +497,85 @@ To fix the vulnerabilities found by the image scan, we would:
 1.  **Use a More Secure Base Image:** Update our `Dockerfile` to use a more minimal and secure base image. For Python, this often means using a multi-stage build with a "distroless" image for the final stage, or a hardened `slim-buster` image.
 2.  **Keep Base Images Updated:** Regularly rebuild images to pull in the latest security patches from the base image.
 3.  **Minimize Installed Packages:** Only install packages absolutely necessary for the application to run.
+
+---
+
+### **Step 12 (Theoretical): IaC (Infrastructure as Code) Scanning with Checkov**
+
+**Goal:** Understand how to automatically scan our Infrastructure as Code (IaC) for security misconfigurations *before* it is ever deployed to our Google Cloud Platform (GCP) environment.
+
+**12.1 Introduction to IaC Scanning:**
+
+*   **Recap:** From Day 4, we learned that IaC treats our infrastructure as code, enabling version control, repeatability, and automation. Just like application code, IaC can contain security flaws, but these are misconfigurations rather than traditional code bugs.
+*   **Purpose:** IaC scanning is essentially Static Application Security Testing (SAST) for infrastructure. It finds these misconfigurations early in the development lifecycle, preventing insecure infrastructure from ever being provisioned in the cloud.
+
+**12.2 The Problem: Misconfigurations in IaC**
+
+*   Cloud environments are complex, and it's easy to make mistakes when writing IaC. Common misconfigurations include:
+    *   Creating publicly accessible storage buckets (e.g., GCP Cloud Storage buckets).
+    *   Opening firewall ports (like SSH or RDP) to the entire internet (`0.0.0.0/0`).
+    *   Not enforcing encryption for databases or storage.
+    *   Assigning overly permissive IAM roles to service accounts.
+
+**12.3 The Tool: `Checkov`**
+
+*   **What it is:** `Checkov` is an open-source static analysis tool specifically designed for IaC. It scans various IaC frameworks, including Terraform (which we will use), CloudFormation, Kubernetes, and more, for security and compliance misconfigurations.
+*   **How it works (Theory):**
+    1.  **Parsing:** Checkov parses your IaC files (e.g., `.tf` files for Terraform) to understand the resources you are defining (e.g., a `google_storage_bucket`, a `google_compute_instance`).
+    2.  **Policy Evaluation:** It then runs hundreds of built-in policies (rules) against these resources. Each policy checks for a specific security best practice or compliance requirement (e.g., "Ensure Cloud Storage buckets are not publicly accessible," "Ensure Compute Engine instances do not have SSH open to the world").
+    3.  **Report Generation:** It generates a report detailing any policies that have been violated, including the policy ID, severity, and the exact location in your IaC file.
+
+**12.4 Theoretical `capstone_pipeline.yml` Modification:**
+
+To integrate IaC scanning, we would add a new step to our `capstone_pipeline.yml` file. This step would typically run after the code checkout and before any deployment steps. For this theoretical example, we'll assume our Terraform files are located in `devsecops/capstone_app/terraform/`.
+
+```yaml
+      - name: Install dependencies
+        working-directory: ./devsecops/capstone_app
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # ... (Docker build and scan steps would be here) ...
+
+      - name: IaC Scan with Checkov
+        uses: bridgecrewio/checkov-action@v1 # Using a pre-built action for Checkov
+        with:
+          directory: devsecops/capstone_app/terraform/ # Directory containing our Terraform files
+          framework: terraform
+          output_format: cli
+          output_file_path: checkov_results.txt
+          soft_fail: false # Fail the pipeline if any policy violations are found
+```
+
+**Explanation of the new step:**
+
+*   `name: IaC Scan with Checkov`: A descriptive name for the step.
+*   `uses: bridgecrewio/checkov-action@v1`: This specifies a pre-built GitHub Action that will run the Checkov scanner.
+*   `with:`: This section passes parameters to the Checkov action:
+    *   `directory: devsecops/capstone_app/terraform/`: Tells Checkov where to find our Terraform files.
+    *   `framework: terraform`: Specifies that we are scanning Terraform code.
+    *   `soft_fail: false`: This is our security gate! It tells Checkov to fail the GitHub Actions step if any policy violations are found.
+
+**12.5 Expected Output (Theoretical Log Analysis):**
+
+If our (future) Terraform code contains misconfigurations, Checkov would report them in the pipeline logs. For example, if we had a publicly accessible Cloud Storage bucket defined in Terraform, the logs might show:
+
+```
+Check: CKV_GCP_3: Ensure Google Cloud Storage bucket is not publicly accessible.
+       FAILED for resource: google_storage_bucket.my_public_bucket
+       File: /github/workspace/devsecops/capstone_app/terraform/main.tf
+       Line: 10
+       Severity: HIGH
+```
+
+**12.6 Expected Outcome (Theoretical Pipeline Behavior):**
+
+*   If our IaC code contains misconfigurations that violate Checkov's policies, the pipeline would **fail** at the "IaC Scan with Checkov" step.
+*   **Why it's a Success:** This failure is a crucial security gate. It prevents us from provisioning insecure infrastructure in our GCP environment. It provides immediate feedback to the developer, forcing them to fix the infrastructure definition before it can be deployed.
+
+**12.7 Theoretical Mitigation Strategy:**
+
+To fix the misconfigurations found by Checkov, we would modify our Terraform code to comply with the security policies. For example, to fix a publicly accessible Cloud Storage bucket, we would add a `public_access_prevention` block to the bucket resource.
 
 ---
